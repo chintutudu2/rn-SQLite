@@ -1,120 +1,84 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * Generated with the TypeScript template
- * https://github.com/react-native-community/react-native-template-typescript
- *
- * @format
- */
+import {Button, SafeAreaView, StyleSheet, Text, TextInput} from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
 
-import React, {type PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import {openDatabase} from 'react-native-sqlite-storage';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-const Section: React.FC<
-  PropsWithChildren<{
-    title: string;
-  }>
-> = ({children, title}) => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
+const db = openDatabase({
+  name: 'my_sqlite.db',
+});
 
 const App = () => {
-  const isDarkMode = useColorScheme() === 'dark';
+  const inputRef = useRef(null);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const [name, setName] = useState('');
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    createTable();
+  }, []);
+
+  const createTable = () => {
+    db.transaction(tx => {
+      tx.executeSql(
+        `CREATE TABLE IF NOT EXISTS data (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(20))`,
+        [],
+        (tx: any, results: any) => {
+          console.log('tx', tx);
+          console.log('results', results);
+
+          tx.executeSql('SELECT * FROM data', [], (tx: any, results: any) => {
+            var len = results.rows.length;
+            for (let i = 0; i < len; i++) {
+              let row = results.rows.item(i);
+              console.log(`Name: ${row.name}`);
+              setData((prevData: any) => {
+                return [...prevData, row.name];
+              });
+            }
+          });
+        },
+        (error: any) => {
+          console.log('error', error);
+        },
+      );
+    });
+  };
+
+  const onPressAdd = () => {
+    db.transaction(tx => {
+      tx.executeSql(
+        `INSERT INTO data (name) VALUES (?)`,
+        [name],
+        (tx: any, results: any) => {
+          console.log('tx', tx);
+          console.log('results', results);
+          setData((prevData: any) => {
+            return [...prevData, name];
+          });
+          setName('');
+        },
+        (error: any) => {
+          console.log('error', error);
+        },
+      );
+    });
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <SafeAreaView>
+      <TextInput
+        style={{height: 40, margin: 12, borderWidth: 1, padding: 10}}
+        onChangeText={setName}
+        value={name}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+      <Button onPress={onPressAdd} title="Add Name" color="#841584" />
+      {data.map((ele, index) => {
+        return <Text key={index}>{ele}</Text>;
+      })}
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
-
 export default App;
+
+const styles = StyleSheet.create({});
